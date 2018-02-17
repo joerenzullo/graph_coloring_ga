@@ -1,4 +1,9 @@
 import graph_tool.all as gt
+import random
+from numpy.random import choice
+import time
+import math
+import copy
 
 
 def parse_input(graph_file):
@@ -31,7 +36,6 @@ def parse_input(graph_file):
     return color_target, graph
 
 
-
 # pos = gt.arf_layout(g)
 #
 # for edge in g.edges():
@@ -43,51 +47,112 @@ def parse_input(graph_file):
 #
 # print(g.get_out_degrees(vertex_list))
 
-gt.graph_draw(g)  # , pos=pos)
+# gt.graph_draw(g)  # , pos=pos)
 
 
 class Individual:
     def __init__(self):
         self.coloring = {}
+        self.color_limit = 0
+        self.graph_size = 0
         self.fitness = 0
-        self.mutation_rate = 0.01
+        self.number_of_mutations = 1
+        self.changed = True
 
     def initialize(self, graph_size, color_limit):
+        self.graph_size = graph_size
+        self.color_limit = color_limit
+        self.number_of_mutations = math.ceil(self.graph_size / 20.0)
         for i in range(graph_size):
-            self.coloring[i] = 0  # TODO: pick a color at random from 0 to color limit
+            self.coloring[i] = random.randint(0, color_limit - 1)
 
     def mutate(self):
-        for i in range(len(self.coloring)):
-            # TODO: make this happen a if rand [0,1] is < mutation_rate
-            self.coloring[i] = 0  # TODO: pick a new random color from 0 to color limit
+        # pick n=number_of_mutations nodes at random without replacement
+        choices = choice(self.graph_size, self.number_of_mutations, replace=False)
+        for a in choices:
+            self.coloring[a] = random.randint(0, self.color_limit - 1)
+        self.changed = True
 
     def crossover(self, other):
         # other is an individual - single point crossover
-        # TODO: pick a number at random between 0 and size of graph - replace the 0 with that number
-        for i in range(0, len(self.coloring)):
+        crossover_point = random.randint(0, self.graph_size - 1)
+        for i in range(crossover_point, self.graph_size):
             self.coloring[i] = other.coloring[i]
+        self.changed = True
 
 
 class Population:
     def __init__(self):
         self.pop_size = 0
+        self.graph_size = 0
+        self.color_limit = 0
+        self.edge_count = 0
         self.pop = []
+        self.individuals_to_mutate = 10
+        self.crossover_percent = 10
+        self.fitness_array = []
 
-    def initialize(self, pop_size, graph_size, color_limit):
+    def initialize(self, pop_size, graph_size, color_limit, edge_count, crossover_percent):
         self.pop_size = pop_size
-        self.pop = [Individual().initialize(graph_size=graph_size, color_limit=color_limit) for _ in range(pop_size)]
+        self.individuals_to_mutate = math.ceil(pop_size / 10.0)  # set this to 10% of the population
+        self.graph_size = graph_size
+        self.color_limit = color_limit
+        self.edge_count = edge_count
+        self.crossover_percent = crossover_percent
+        self.pop = [Individual() for _ in range(pop_size)]
+        self.fitness_array = [0 for _ in range(pop_size)]
+        for p in self.pop:
+            p.initialize(graph_size=graph_size, color_limit=color_limit)
 
     def select(self):
-        # pick 2 things at random, hold a tournament, and the winner survives. Repeat until new pop is full
-        index_one = 0
-        index_two = 1
-        if self.pop[index_one].fitness() > self.pop[index_two].fitness():
-            return self.pop[index_one]
+        # pick 2 things at random, hold a tournament, and the winner is selected.
+        choices = choice(self.pop, self.pop_size, replace=False)
+        individual_one = choices[0]
+        individual_two = choices[1]
+        if individual_one.fitness > individual_two.fitness:
+            return copy.deepcopy(individual_one)
         else:
-            return self.pop[index_two]
+            return copy.deepcopy(individual_two)
+
+    def evaluate_fitness(self, graph):
+        for i, individual in enumerate(self.pop):
+            if individual.changed:
+                total = 0
+                number_of_edges = 0
+                for edge in graph.edges():
+                    number_of_edges += 1
+                    if individual.coloring[edge.source()] != individual.coloring[edge.target()]:
+                        total += 1
+                individual.fitness = total / number_of_edges
+                self.fitness_array[i] = total / number_of_edges
+                individual.changed = False
 
     def mutate(self):
-        pass
+        to_mutate = choice(self.pop_size, self.individuals_to_mutate, replace=False)
+        for individual in to_mutate:
+            self.pop[individual].mutate()
+
+    def update_population(self):  # implements crossover
+        new_pop = []
+        current_size = 0
+        # elitism - copy best individual
+        new_pop.append(copy.deepcopy(self.pop[self.fitness_array.index(max(self.fitness_array))]))
+        current_size += 1
+
+        while current_size < self.pop_size:
+            cross = random.randint(0, 99)
+            # with prob = crossover_percent, choose two individuals by tournament select & cross them over then add
+            if cross < self.crossover_percent:
+                a = self.select()
+                b = self.select()
+                a.crossover(b)
+                new_pop.append(a)
+                current_size += 1
+            # with prob = 1 - crossover_percent, choose an individual by tournament select & add
+            else:
+                new_pop.append(self.select())
+                current_size += 1
+        self.pop = new_pop
 
 
 class Experiment:
@@ -95,33 +160,44 @@ class Experiment:
         self.input_filename = ""
         self.pop = Population()
         self.color_limit = 0
-        self.graph = 0
+        self.graph = gt.Graph()
         self.pop_size = 100
         self.generations = 1000
+        self.crossover_percent = 10
 
-    def initialize(self, input_filename):
+    def initialize(self, input_filename, pop_size, generations, crossover_percent):
         self.input_filename = input_filename
+        self.pop_size = pop_size
+        self.generations = generations
+        self.crossover_percent = crossover_percent
         self.color_limit, self.graph = parse_input(self.input_filename)
-        self.pop.initialize(pop_size=self.pop_size, graph_size=self.graph.size(), color_limit=self.color_limit)
-        # TODO: check graph size syntax
-
-    def fitness(self, individual):
-        total = 0
-        number_of_edges = 0
-        for edge in self.graph.edges():
-            if individual.coloring[edge[0]] != individual.coloring[edge[1]]:
-                total += 1
-
-        return total / number_of_edges
+        self.pop.initialize(pop_size=self.pop_size, graph_size=self.graph.num_vertices(), color_limit=self.color_limit,
+                            edge_count=self.graph.num_edges(), crossover_percent=self.crossover_percent)
 
     def run_generation(self):
         # evaluate, select (& crossover), mutate
-        for i in range(self.pop.pop_size):
-            pass  # TODO: for edge in graph, check if that element's edge is satisfied. Div by # of edges.
+        self.pop.evaluate_fitness(graph=self.graph)
+        self.pop.mutate()
+        self.pop.update_population()
+        pass
+
+    def run_experiment(self):
+        gens = 0
+        while gens < self.generations:
+            self.run_generation()
+            gens += 1
+
+
+start = time.time()
+e = Experiment()
+e.initialize(input_filename='queen5_5.g', pop_size=100, generations=1000, crossover_percent=10)
+e.run_experiment()
+print(time.time() - start)
+print(e.pop.fitness_array)
+pass
 
 
 # ideas to improve things:
 # make crossover apply to a min-cut of the graph, instead of just at random location
 # make mutation expect 1 per individual per invocation
 # have selection use elitism to keep fittest individual in the population
-
