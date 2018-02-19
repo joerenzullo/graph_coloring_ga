@@ -118,13 +118,23 @@ class Population:
         for i, individual in enumerate(self.pop):
             if individual.changed:
                 total = 0
-                number_of_edges = 0
                 for edge in graph.edges():
-                    number_of_edges += 1
                     if individual.coloring[edge.source()] != individual.coloring[edge.target()]:
                         total += 1
-                individual.fitness = total / number_of_edges
-                self.fitness_array[i] = total / number_of_edges
+                individual.fitness = total / self.edge_count
+                self.fitness_array[i] = total / self.edge_count
+                individual.changed = False
+
+    def evaluate_balanced_fitness(self, graph):
+        # TODO: make this balanced by adding product term at the end
+        for i, individual in enumerate(self.pop):
+            if individual.changed:
+                total = 0
+                for edge in graph.edges():
+                    if individual.coloring[edge.source()] != individual.coloring[edge.target()]:
+                        total += 1
+                individual.fitness = total / self.edge_count
+                self.fitness_array[i] = total / self.edge_count
                 individual.changed = False
 
     def mutate(self):
@@ -146,6 +156,7 @@ class Population:
                 a = self.select()
                 b = self.select()
                 a.crossover(b)
+                a.changed = True
                 new_pop.append(a)
                 current_size += 1
             # with prob = 1 - crossover_percent, choose an individual by tournament select & add
