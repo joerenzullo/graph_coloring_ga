@@ -4,6 +4,7 @@ from numpy.random import choice
 import time
 import math
 import copy
+import matplotlib.pyplot as plt
 
 
 def parse_input(graph_file):
@@ -98,7 +99,7 @@ class Population:
         choices = choice(self.pop, self.pop_size, replace=False)
         individual_one = choices[0]
         individual_two = choices[1]
-        if individual_one.balanced_fitness > individual_two.balanced_fitness:
+        if individual_one.fitness > individual_two.fitness:
             return copy.deepcopy(individual_one)
         else:
             return copy.deepcopy(individual_two)
@@ -182,6 +183,7 @@ class Experiment:
         self.pop_size = 100
         self.generations = 1000
         self.crossover_percent = 10
+        self.progress = []
 
     def initialize(self, input_filename, pop_size, generations, crossover_percent):
         self.input_filename = input_filename
@@ -194,27 +196,42 @@ class Experiment:
 
     def run_generation(self):
         # evaluate, select (& crossover), mutate
-        self.pop.evaluate_balanced_fitness(graph=self.graph)
+        self.pop.evaluate_fitness(graph=self.graph)
+        self.track_progress()
         self.pop.mutate()
         self.pop.update_population()
         pass
+
+    def track_progress(self):
+        maximum = max(self.pop.fitness_array)
+        minimum = min(self.pop.fitness_array)
+        avg = sum(self.pop.fitness_array) / self.pop_size
+        self.progress.append([maximum, minimum, avg])
+
+    def gen_graph(self):
+        filename = 'results/' + self.input_filename + "_size" + str(self.pop_size) + "_generations" + str(self.generations)
+        plt.plot(self.progress)
+        plt.ylabel('fitness')
+        plt.xlabel('generations')
+        plt.show()
+        # TODO: save plot of max, min, avg as pdf for easy import into latex
 
     def run_experiment(self):
         gens = 0
         while gens < self.generations:
             self.run_generation()
             gens += 1
+        self.gen_graph()
 
 
 start = time.time()
 e = Experiment()
-e.initialize(input_filename='myciel3.g', pop_size=100, generations=100, crossover_percent=10)
+e.initialize(input_filename='jean.g', pop_size=100, generations=1000, crossover_percent=10)
 e.run_experiment()
 print(time.time() - start)
-print(e.pop.fitness_array)
-print(e.pop.balanced_fitness_array)
-pass
-
+# print(e.pop.fitness_array)
+# print(e.progress)
+# print(e.pop.balanced_fitness_array)
 
 # ideas to improve things:
 # make crossover apply to a min-cut of the graph, instead of just at random location
