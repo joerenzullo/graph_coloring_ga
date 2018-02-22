@@ -36,26 +36,13 @@ def parse_input(graph_file):
     return color_target, graph
 
 
-# pos = gt.arf_layout(g)
-#
-# for edge in g.edges():
-#     print(edge)
-
-# vertex_list = []
-# for vertex in g.vertices():
-#     vertex_list.append(vertex)
-#
-# print(g.get_out_degrees(vertex_list))
-
-# gt.graph_draw(g)  # , pos=pos)
-
-
 class Individual:
     def __init__(self):
         self.coloring = {}
         self.color_limit = 0
         self.graph_size = 0
         self.fitness = 0
+        self.balanced_fitness = 0
         self.number_of_mutations = 1
         self.changed = True
 
@@ -91,6 +78,7 @@ class Population:
         self.individuals_to_mutate = 10
         self.crossover_percent = 10
         self.fitness_array = []
+        self.balanced_fitness_array = []
 
     def initialize(self, pop_size, graph_size, color_limit, edge_count, crossover_percent):
         self.pop_size = pop_size
@@ -101,6 +89,7 @@ class Population:
         self.crossover_percent = crossover_percent
         self.pop = [Individual() for _ in range(pop_size)]
         self.fitness_array = [0 for _ in range(pop_size)]
+        self.balanced_fitness_array = [0 for _ in range(pop_size)]
         for p in self.pop:
             p.initialize(graph_size=graph_size, color_limit=color_limit)
 
@@ -109,7 +98,7 @@ class Population:
         choices = choice(self.pop, self.pop_size, replace=False)
         individual_one = choices[0]
         individual_two = choices[1]
-        if individual_one.fitness > individual_two.fitness:
+        if individual_one.balanced_fitness > individual_two.balanced_fitness:
             return copy.deepcopy(individual_one)
         else:
             return copy.deepcopy(individual_two)
@@ -126,15 +115,33 @@ class Population:
                 individual.changed = False
 
     def evaluate_balanced_fitness(self, graph):
-        # TODO: make this balanced by adding product term at the end
         for i, individual in enumerate(self.pop):
             if individual.changed:
                 total = 0
                 for edge in graph.edges():
                     if individual.coloring[edge.source()] != individual.coloring[edge.target()]:
                         total += 1
+
+                # initialize coloring
+                coloration = [0 for _ in range(self.color_limit)]
+                # count colors
+                for _ in range(self.graph_size):
+                    coloration[individual.coloring[_]] += 1
+                # normalize coloration vector
+                for _ in range(self.color_limit):
+                    coloration[_] /= self.graph_size
+                # calculate the product of the marginal coloration
+                product = 1
+                for _ in range(self.color_limit):
+                    product *= coloration[_]
+
+                # write out calculated values
                 individual.fitness = total / self.edge_count
-                self.fitness_array[i] = total / self.edge_count
+                self.fitness_array[i] = individual.fitness
+
+                individual.balanced_fitness = individual.fitness * product / ((1.0/self.color_limit)**self.color_limit)
+                self.balanced_fitness_array[i] = individual.balanced_fitness
+
                 individual.changed = False
 
     def mutate(self):
@@ -187,7 +194,7 @@ class Experiment:
 
     def run_generation(self):
         # evaluate, select (& crossover), mutate
-        self.pop.evaluate_fitness(graph=self.graph)
+        self.pop.evaluate_balanced_fitness(graph=self.graph)
         self.pop.mutate()
         self.pop.update_population()
         pass
@@ -201,10 +208,11 @@ class Experiment:
 
 start = time.time()
 e = Experiment()
-e.initialize(input_filename='queen5_5.g', pop_size=100, generations=1000, crossover_percent=10)
+e.initialize(input_filename='myciel3.g', pop_size=100, generations=100, crossover_percent=10)
 e.run_experiment()
 print(time.time() - start)
 print(e.pop.fitness_array)
+print(e.pop.balanced_fitness_array)
 pass
 
 
