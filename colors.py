@@ -1,6 +1,7 @@
 import graph_tool.all as gt
 import random
 from numpy.random import choice
+import numpy as np
 import time
 import math
 import copy
@@ -184,8 +185,9 @@ class Experiment:
         self.generations = 1000
         self.crossover_percent = 10
         self.progress = []
+        self.instance = 0
 
-    def initialize(self, input_filename, pop_size, generations, crossover_percent):
+    def initialize(self, input_filename, pop_size, generations, crossover_percent, instance=0):
         self.input_filename = input_filename
         self.pop_size = pop_size
         self.generations = generations
@@ -193,6 +195,7 @@ class Experiment:
         self.color_limit, self.graph = parse_input(self.input_filename)
         self.pop.initialize(pop_size=self.pop_size, graph_size=self.graph.num_vertices(), color_limit=self.color_limit,
                             edge_count=self.graph.num_edges(), crossover_percent=self.crossover_percent)
+        self.instance = instance
 
     def run_generation(self):
         # evaluate, select (& crossover), mutate
@@ -217,28 +220,55 @@ class Experiment:
         plt.savefig(filename)
         # plt.show()
 
+    def save_avg_progress(self):
+        filename = 'stochastic/' + self.input_filename + "_" + str(self.instance)
+        avg_progress = []
+        for i in range(len(self.progress)):
+            avg_progress.append(self.progress[i][2])
+        np.savetxt(filename, avg_progress)
+
     def run_experiment(self):
         gens = 0
         while gens < self.generations:
             self.run_generation()
             gens += 1
         # self.gen_graph()
+        self.save_avg_progress()
 
 
-start = time.time()
-e = Experiment()
-e.initialize(input_filename='hard-graph-4-7-2.txt', pop_size=100, generations=10, crossover_percent=10)
-e.run_experiment()
-print(time.time() - start)
-print(e.pop.fitness_array)
-max_value = max(e.pop.fitness_array)
-print(max_value)
-print(e.pop.pop[e.pop.fitness_array.index(max_value)].coloring)
+def make_stochastic_figure():
+    array = []
+    flipped = [[] for _ in range(100)]
+    for i in range(10):
+        filename = 'stochastic/queen5_5.g_' + str(i)
+        array.append(np.loadtxt(filename).tolist())
+    nparray = np.array(array)
+    for i in range(10):
+        for j in range(100):
+            flipped[j].append(nparray[i][j])
+    # np.append(nparray, array, axis=0)
+
+    plt.plot(flipped)
+    plt.ylabel('fitness')
+    plt.xlabel('generations')
+    plt.ylim(0.8, 1.0)
+    plt.savefig('stochastic/queen5_5.pdf')
+    plt.show()
+
+
+make_stochastic_figure()
+
+# start = time.time()
+# for blah in range(10):
+#     e = Experiment()
+#     e.initialize(input_filename='queen5_5.g', pop_size=100, generations=100, crossover_percent=10, instance=blah)
+#     e.run_experiment()
+#     print(str(blah) + '\n')
+# print(time.time() - start)
+# print(e.pop.fitness_array)
+# max_value = max(e.pop.fitness_array)
+# print(max_value)
+# print(e.pop.pop[e.pop.fitness_array.index(max_value)].coloring)
 # print(e.pop.fitness_array)
 # print(e.progress)
 # print(e.pop.balanced_fitness_array)
-
-# ideas to improve things:
-# make crossover apply to a min-cut of the graph, instead of just at random location
-# make mutation expect 1 per individual per invocation
-# have selection use elitism to keep fittest individual in the population
