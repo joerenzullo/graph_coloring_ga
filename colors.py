@@ -227,7 +227,7 @@ class Experiment:
 
 start = time.time()
 e = Experiment()
-e.initialize(input_filename='hard-graph-4-7-2.txt', pop_size=100, generations=100, crossover_percent=10)
+e.initialize(input_filename='myciel3.g', pop_size=100, generations=100, crossover_percent=10)
 e.run_experiment()
 print(time.time() - start)
 # print(e.pop.fitness_array)
