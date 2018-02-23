@@ -226,7 +226,7 @@ class Experiment:
 
 start = time.time()
 e = Experiment()
-e.initialize(input_filename='jean.g', pop_size=100, generations=1000, crossover_percent=10)
+e.initialize(input_filename='queen5_5.g', pop_size=100, generations=300, crossover_percent=10)
 e.run_experiment()
 print(time.time() - start)
 # print(e.pop.fitness_array)
