@@ -246,7 +246,6 @@ def make_stochastic_figure():
     for i in range(10):
         for j in range(100):
             flipped[j].append(nparray[i][j])
-    # np.append(nparray, array, axis=0)
 
     plt.plot(flipped)
     plt.ylabel('fitness')
@@ -256,15 +255,16 @@ def make_stochastic_figure():
     plt.show()
 
 
+start = time.time()
+for blah in range(10):
+    e = Experiment()
+    e.initialize(input_filename='queen5_5.g', pop_size=100, generations=100, crossover_percent=10, instance=blah)
+    e.run_experiment()
+    print(str(blah) + '\n')
+print(time.time() - start)
+
 make_stochastic_figure()
 
-# start = time.time()
-# for blah in range(10):
-#     e = Experiment()
-#     e.initialize(input_filename='queen5_5.g', pop_size=100, generations=100, crossover_percent=10, instance=blah)
-#     e.run_experiment()
-#     print(str(blah) + '\n')
-# print(time.time() - start)
 # print(e.pop.fitness_array)
 # max_value = max(e.pop.fitness_array)
 # print(max_value)
