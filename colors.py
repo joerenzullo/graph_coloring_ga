@@ -222,14 +222,18 @@ class Experiment:
         while gens < self.generations:
             self.run_generation()
             gens += 1
-        self.gen_graph()
+        # self.gen_graph()
 
 
 start = time.time()
 e = Experiment()
-e.initialize(input_filename='myciel3.g', pop_size=100, generations=100, crossover_percent=10)
+e.initialize(input_filename='hard-graph-4-7-2.txt', pop_size=100, generations=10, crossover_percent=10)
 e.run_experiment()
 print(time.time() - start)
+print(e.pop.fitness_array)
+max_value = max(e.pop.fitness_array)
+print(max_value)
+print(e.pop.pop[e.pop.fitness_array.index(max_value)].coloring)
 # print(e.pop.fitness_array)
 # print(e.progress)
 # print(e.pop.balanced_fitness_array)
