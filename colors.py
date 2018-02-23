@@ -209,12 +209,13 @@ class Experiment:
         self.progress.append([maximum, minimum, avg])
 
     def gen_graph(self):
-        filename = 'results/' + self.input_filename + "_size" + str(self.pop_size) + "_generations" + str(self.generations)
+        filename = 'results/' + self.input_filename + "_size" + str(self.pop_size) + "_generations" + str(self.generations) + '.pdf'
         plt.plot(self.progress)
         plt.ylabel('fitness')
         plt.xlabel('generations')
-        plt.show()
-        # TODO: save plot of max, min, avg as pdf for easy import into latex
+        plt.ylim(0, 1.05)
+        plt.savefig(filename)
+        # plt.show()
 
     def run_experiment(self):
         gens = 0
@@ -226,7 +227,7 @@ class Experiment:
 
 start = time.time()
 e = Experiment()
-e.initialize(input_filename='queen5_5.g', pop_size=100, generations=300, crossover_percent=10)
+e.initialize(input_filename='hard-graph-4-7-2.txt', pop_size=100, generations=100, crossover_percent=10)
 e.run_experiment()
 print(time.time() - start)
 # print(e.pop.fitness_array)
